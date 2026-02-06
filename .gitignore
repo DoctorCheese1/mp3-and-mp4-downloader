@@ -1,4 +1,9 @@
 output/
+uploads/
+downloads/
+*.mp3
+*.mp4
+.venv/
 *.mp3
 *.mp4
 uploads/
