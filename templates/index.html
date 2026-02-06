@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MP3/MP4 Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>MP3/MP4 Converter</h1>
+        <p>
+          Upload a media file and create multiple MP3 bitrates or MP4 resolutions.
+        </p>
+      </header>
+
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <div class="alert">
+        {% for message in messages %}
+        <p>{{ message }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <form method="post" enctype="multipart/form-data" class="card">
+        <label class="file-input">
+          <span>Select media file</span>
+          <input type="file" name="file" required />
+        </label>
+
+        <div class="field-group">
+          <label>
+            <span>Mode</span>
+            <select name="mode" id="mode-select">
+              <option value="mp3">MP3</option>
+              <option value="mp4">MP4</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="field-group" id="mp3-fields">
+          <label>
+            <span>MP3 bitrates (comma-separated)</span>
+            <input
+              type="text"
+              name="bitrates"
+              value="128k,192k,320k"
+              placeholder="128k,192k,320k"
+            />
+          </label>
+        </div>
+
+        <div class="field-group hidden" id="mp4-fields">
+          <label>
+            <span>Resolutions (comma-separated)</span>
+            <input
+              type="text"
+              name="resolutions"
+              value="1920:1080,1280:720,854:480"
+              placeholder="1920:1080,1280:720,854:480"
+            />
+          </label>
+          <label>
+            <span>Video bitrate</span>
+            <input type="text" name="video_bitrate" value="2000k" />
+          </label>
+          <label>
+            <span>Audio bitrate</span>
+            <input type="text" name="audio_bitrate" value="128k" />
+          </label>
+        </div>
+
+        <button type="submit">Convert</button>
+      </form>
+
+      {% if outputs %}
+      <section class="results">
+        <h2>Download your files</h2>
+        <ul>
+          {% for output in outputs %}
+          <li>
+            <a href="{{ url_for('download', job_id=job_id, filename=output) }}">
+              {{ output }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+      {% endif %}
+    </main>
+
+    <script>
+      const modeSelect = document.getElementById("mode-select");
+      const mp3Fields = document.getElementById("mp3-fields");
+      const mp4Fields = document.getElementById("mp4-fields");
+
+      function toggleFields() {
+        const isMp3 = modeSelect.value === "mp3";
+        mp3Fields.classList.toggle("hidden", !isMp3);
+        mp4Fields.classList.toggle("hidden", isMp3);
+      }
+
+      modeSelect.addEventListener("change", toggleFields);
+      toggleFields();
+    </script>
+  </body>
+</html>

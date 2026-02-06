@@ -1,0 +1,6 @@
+output/
+*.mp3
+*.mp4
+uploads/
+outputs/
+__pycache__/
