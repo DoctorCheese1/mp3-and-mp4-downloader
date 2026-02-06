@@ -1,0 +1,14 @@
+{
+  "name": "mp3-mp4-converter",
+  "version": "1.0.0",
+  "description": "Web-based MP3/MP4 converter with YouTube support",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ejs": "3.1.10",
+    "express": "4.19.2",
+    "multer": "1.4.5-lts.1"
+  }
+}

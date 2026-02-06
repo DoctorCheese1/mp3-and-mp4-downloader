@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  converter:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./downloads:/app/downloads
+      - ./output:/app/output

@@ -1,0 +1,8 @@
+output/
+uploads/
+downloads/
+*.mp3
+*.mp4
+.venv/
+__pycache__/
+node_modules/
