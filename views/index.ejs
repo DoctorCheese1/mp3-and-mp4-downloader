@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Media Converter</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>MP3 & MP4 Converter</h1>
+        <p>
+          Upload a media file or paste a YouTube link to generate MP3 bitrates or
+          MP4 resolutions.
+        </p>
+      </header>
+
+      <section class="status-card">
+        <h2>Runtime checks</h2>
+        <ul>
+          <li class="<%= runtime.ffmpeg ? 'ok' : 'warn' %>">
+            FFmpeg <%= runtime.ffmpeg ? 'ready' : 'missing' %>
+          </li>
+          <li class="<%= runtime.ytDlp ? 'ok' : 'warn' %>">
+            yt-dlp <%= runtime.ytDlp ? 'ready' : 'missing (YouTube downloads disabled)' %>
+          </li>
+        </ul>
+      </section>
+
+      <% if (message) { %>
+      <div class="alert">
+        <p><%= message %></p>
+      </div>
+      <% } %>
+
+      <form class="card" action="/convert" method="post" enctype="multipart/form-data">
+        <div class="input-grid">
+          <label class="file-input">
+            <span>Upload a media file</span>
+            <input type="file" name="media" />
+          </label>
+
+          <div class="divider">
+            <span>or</span>
+          </div>
+
+          <label class="text-input">
+            <span>YouTube URL</span>
+            <input
+              type="url"
+              name="youtube_url"
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+          </label>
+        </div>
+
+        <div class="mode-toggle">
+          <label>
+            <input type="radio" name="mode" value="mp3" checked />
+            MP3 (bitrate variants)
+          </label>
+          <label>
+            <input type="radio" name="mode" value="mp4" />
+            MP4 (resolution variants)
+          </label>
+        </div>
+
+        <section class="option-group">
+          <h2>MP3 Options</h2>
+          <p>Bitrates (comma-separated)</p>
+          <input type="text" name="bitrates" value="<%= mp3Bitrates.join(',') %>" />
+        </section>
+
+        <section class="option-group">
+          <h2>MP4 Options</h2>
+          <p>Resolutions (comma-separated, WIDTH:HEIGHT)</p>
+          <input
+            type="text"
+            name="resolutions"
+            value="<%= mp4Resolutions.join(',') %>"
+          />
+
+          <div class="grid">
+            <label>
+              Video bitrate
+              <input type="text" name="video_bitrate" value="2000k" />
+            </label>
+            <label>
+              Audio bitrate
+              <input type="text" name="audio_bitrate" value="128k" />
+            </label>
+          </div>
+        </section>
+
+        <button type="submit">Convert</button>
+      </form>
+    </main>
+  </body>
+</html>
