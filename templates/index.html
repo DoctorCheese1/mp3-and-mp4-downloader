@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Media Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>MP3 & MP4 Converter</h1>
+        <p>
+          Upload a media file and generate multiple MP3 bitrates or MP4
+          resolutions.
+        </p>
+      </header>
+
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <div class="alert">
+        {% for message in messages %}
+        <p>{{ message }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <form class="card" action="{{ url_for('convert') }}" method="post" enctype="multipart/form-data">
+        <label class="file-input">
+          <span>Choose media file</span>
+          <input type="file" name="media" />
+        </label>
+
+        <div class="divider">
+          <span>or</span>
+        </div>
+
+        <label class="text-input">
+          <span>YouTube URL</span>
+          <input type="url" name="youtube_url" placeholder="https://www.youtube.com/watch?v=..." />
+        </label>
+
+        <div class="mode-toggle">
+          <label>
+            <input type="radio" name="mode" value="mp3" checked />
+            MP3 (bitrate variants)
+          </label>
+          <label>
+            <input type="radio" name="mode" value="mp4" />
+            MP4 (resolution variants)
+          </label>
+        </div>
+
+        <section class="option-group">
+          <h2>MP3 Options</h2>
+          <p>Bitrates (comma-separated)</p>
+          <input
+            type="text"
+            name="bitrates"
+            value="{{ mp3_bitrates | join(',') }}"
+          />
+        </section>
+
+        <section class="option-group">
+          <h2>MP4 Options</h2>
+          <p>Resolutions (comma-separated, WIDTH:HEIGHT)</p>
+          <input
+            type="text"
+            name="resolutions"
+            value="{{ mp4_resolutions | join(',') }}"
+          />
+
+          <div class="grid">
+            <label>
+              Video bitrate
+              <input type="text" name="video_bitrate" value="2000k" />
+            </label>
+            <label>
+              Audio bitrate
+              <input type="text" name="audio_bitrate" value="128k" />
+            </label>
+          </div>
+        </section>
+
+        <button type="submit">Convert</button>
+      </form>
+    </main>
+  </body>
+</html>
