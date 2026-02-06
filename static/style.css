@@ -31,39 +31,6 @@ h1 {
   box-shadow: 0 20px 40px rgba(31, 42, 68, 0.08);
 }
 
-.status-card {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 16px 20px;
-  border: 1px solid #e2e8f0;
-  margin-bottom: 20px;
-}
-
-.status-card h2 {
-  margin: 0 0 10px;
-  font-size: 1.05rem;
-}
-
-.status-card ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 8px;
-}
-
-.status-card li {
-  font-weight: 600;
-}
-
-.status-card .ok {
-  color: #15803d;
-}
-
-.status-card .warn {
-  color: #b45309;
-}
-
 .file-input {
   display: flex;
   flex-direction: column;
@@ -107,12 +74,6 @@ h1 {
 
 .divider span {
   padding: 0 12px;
-}
-
-.input-grid {
-  display: grid;
-  gap: 16px;
-  margin-bottom: 12px;
 }
 
 .mode-toggle {
