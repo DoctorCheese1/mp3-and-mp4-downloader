@@ -9,6 +9,16 @@ A simple Python project for converting media files into multiple MP3 bitrates or
 
 ## Web app
 
+### Run without installing Python (Docker)
+
+```bash
+docker compose up --build
+```
+
+Open `http://localhost:5000` in your browser.
+
+### Run with Python
+
 Install dependencies:
 
 ```bash
