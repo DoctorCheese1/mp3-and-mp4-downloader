@@ -1,26 +1,27 @@
 #!/usr/bin/env python3
-"""Flask web app for multi-bitrate MP3 and multi-resolution MP4 conversions."""
+"""Web app for converting media files into MP3/MP4 variants."""
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import uuid
 from pathlib import Path
 
 from flask import Flask, flash, redirect, render_template, request, send_from_directory, url_for
+from werkzeug.utils import secure_filename
+
 
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
-DOWNLOAD_DIR = BASE_DIR / "downloads"
-OUTPUT_DIR = BASE_DIR / "output"
+OUTPUT_DIR = BASE_DIR / "outputs"
 ALLOWED_EXTENSIONS = {"mp3", "mp4", "mov", "mkv", "wav", "aac", "flac"}
 
-DEFAULT_MP3_BITRATES = ["128k", "192k", "320k"]
-DEFAULT_MP4_RESOLUTIONS = ["1920:1080", "1280:720", "854:480"]
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "local-dev-secret"
+app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # 1GB
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
 
 
 def ensure_ffmpeg() -> None:
@@ -28,28 +29,18 @@ def ensure_ffmpeg() -> None:
         raise RuntimeError("ffmpeg is required but was not found on PATH.")
 
 
-def ensure_ytdlp() -> None:
-    if shutil.which("yt-dlp") is None:
-        raise RuntimeError("yt-dlp is required but was not found on PATH.")
-
-
-def get_runtime_status() -> dict[str, bool]:
-    return {
-        "ffmpeg": shutil.which("ffmpeg") is not None,
-        "yt_dlp": shutil.which("yt-dlp") is not None,
-    }
+def parse_csv(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def parse_csv(value: str) -> list[str]:
-    return [item.strip() for item in value.split(",") if item.strip()]
-
-
 def build_mp3_commands(
-    input_path: Path, output_dir: Path, bitrates: list[str]
+    input_path: Path,
+    output_dir: Path,
+    bitrates: list[str],
 ) -> list[list[str]]:
     commands: list[list[str]] = []
     for bitrate in bitrates:
@@ -102,112 +93,71 @@ def run_commands(commands: list[list[str]]) -> None:
         subprocess.run(command, check=True)
 
 
-def download_from_youtube(url: str, target_dir: Path) -> Path:
-    ensure_ytdlp()
-    target_dir.mkdir(parents=True, exist_ok=True)
-    output_template = target_dir / "source.%(ext)s"
-    subprocess.run(
-        [
-            "yt-dlp",
-            "--no-playlist",
-            "-f",
-            "bv*+ba/b",
-            "-o",
-            str(output_template),
-            url,
-        ],
-        check=True,
-    )
-    downloaded_files = sorted(target_dir.glob("source.*"))
-    if not downloaded_files:
-        raise RuntimeError("YouTube download failed to produce a file.")
-    return downloaded_files[0]
+@app.route("/", methods=["GET", "POST"])
+def index():
+    outputs = None
+    job_id = None
 
+    if request.method == "POST":
+        uploaded_file = request.files.get("file")
+        mode = request.form.get("mode", "mp3")
 
-@app.route("/", methods=["GET"])
-def index() -> str:
-    runtime = get_runtime_status()
-    return render_template(
-        "index.html",
-        mp3_bitrates=DEFAULT_MP3_BITRATES,
-        mp4_resolutions=DEFAULT_MP4_RESOLUTIONS,
-        runtime=runtime,
-    )
+        if uploaded_file is None or uploaded_file.filename == "":
+            flash("Please upload a media file.")
+            return redirect(url_for("index"))
 
+        if not allowed_file(uploaded_file.filename):
+            flash("Unsupported file type. Please upload a valid media file.")
+            return redirect(url_for("index"))
 
-@app.route("/convert", methods=["POST"])
-def convert() -> str:
-    try:
-        ensure_ffmpeg()
-    except RuntimeError as exc:
-        flash(str(exc))
-        return redirect(url_for("index"))
-    uploaded = request.files.get("media")
-    youtube_url = request.form.get("youtube_url", "").strip()
-    if (not uploaded or uploaded.filename == "") and not youtube_url:
-        flash("Please upload a media file or provide a YouTube URL.")
-        return redirect(url_for("index"))
-
-    if uploaded and uploaded.filename != "" and not allowed_file(uploaded.filename):
-        flash("Unsupported file type.")
-        return redirect(url_for("index"))
-
-    mode = request.form.get("mode", "mp3")
-
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    file_id = uuid.uuid4().hex
-    if youtube_url:
-        download_dir = DOWNLOAD_DIR / file_id
         try:
-            input_path = download_from_youtube(youtube_url, download_dir)
-        except (subprocess.CalledProcessError, RuntimeError) as exc:
+            ensure_ffmpeg()
+        except RuntimeError as exc:
             flash(str(exc))
             return redirect(url_for("index"))
-    else:
-        extension = uploaded.filename.rsplit(".", 1)[1].lower()
-        input_path = UPLOAD_DIR / f"{file_id}.{extension}"
-        uploaded.save(input_path)
 
-    output_dir = OUTPUT_DIR / file_id
-    output_dir.mkdir(parents=True, exist_ok=True)
+        job_id = uuid.uuid4().hex
+        upload_path = UPLOAD_DIR / job_id
+        output_path = OUTPUT_DIR / job_id
+        upload_path.mkdir(parents=True, exist_ok=True)
+        output_path.mkdir(parents=True, exist_ok=True)
 
-    try:
+        safe_name = secure_filename(uploaded_file.filename)
+        input_path = upload_path / safe_name
+        uploaded_file.save(input_path)
+
         if mode == "mp3":
-            bitrates = parse_csv(request.form.get("bitrates", ""))
-            if not bitrates:
-                bitrates = DEFAULT_MP3_BITRATES
-            commands = build_mp3_commands(input_path, output_dir, bitrates)
+            bitrates = parse_csv(request.form.get("bitrates", "128k,192k,320k"))
+            commands = build_mp3_commands(input_path, output_path, bitrates)
         else:
-            resolutions = parse_csv(request.form.get("resolutions", ""))
-            if not resolutions:
-                resolutions = DEFAULT_MP4_RESOLUTIONS
+            resolutions = parse_csv(
+                request.form.get("resolutions", "1920:1080,1280:720,854:480")
+            )
             video_bitrate = request.form.get("video_bitrate", "2000k")
             audio_bitrate = request.form.get("audio_bitrate", "128k")
             commands = build_mp4_commands(
-                input_path, output_dir, resolutions, video_bitrate, audio_bitrate
+                input_path, output_path, resolutions, video_bitrate, audio_bitrate
             )
 
-        run_commands(commands)
-    except subprocess.CalledProcessError:
-        flash("Conversion failed. Please check your inputs and try again.")
-        return redirect(url_for("index"))
+        try:
+            run_commands(commands)
+        except subprocess.CalledProcessError:
+            flash("Conversion failed. Please check your input and try again.")
+            return redirect(url_for("index"))
 
-    outputs = sorted(path.name for path in output_dir.iterdir() if path.is_file())
-    return render_template(
-        "results.html",
-        file_id=file_id,
-        outputs=outputs,
-    )
+        outputs = sorted(p.name for p in output_path.iterdir() if p.is_file())
+
+    return render_template("index.html", outputs=outputs, job_id=job_id)
 
 
-@app.route("/download/<file_id>/<filename>")
-def download(file_id: str, filename: str):
-    directory = OUTPUT_DIR / file_id
-    return send_from_directory(directory, filename, as_attachment=True)
+@app.route("/download/<job_id>/<filename>")
+def download(job_id: str, filename: str):
+    safe_filename = secure_filename(filename)
+    directory = OUTPUT_DIR / job_id
+    return send_from_directory(directory, safe_filename, as_attachment=True)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)
